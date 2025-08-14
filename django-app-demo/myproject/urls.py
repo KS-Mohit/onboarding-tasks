@@ -13,3 +13,4 @@ urlpatterns = [
     path('api/tasks/', task_list, name='task-list'),
     path('api/tasks/<int:pk>/', task_detail, name='task-detail'),
 ]
+
