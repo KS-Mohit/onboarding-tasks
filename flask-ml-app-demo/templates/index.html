@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Iris Species Predictor</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            background-color: #f4f4f4;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 50px;
+        }
+        h1, h2 {
+            color: #333;
+            text-align: center;
+        }
+        form {
+            background-color: #fff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 300px;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        button {
+            background-color: #5cb85c;
+            color: white;
+            padding: 12px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s ease;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        .prediction {
+            margin-top: 30px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #007bff;
+        }
+        .iris-image {
+            margin-top: 20px;
+            max-width: 200px;
+            border-radius: 8px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+        }
+    </style>
+</head>
+<body>
+    <h1>Iris Flower Species Predictor</h1>
+    <form action="{{ url_for('predict') }}" method="post">
+        <input type="text" name="sepal_length" placeholder="Sepal Length (cm)" required="required" /><br>
+        <input type="text" name="sepal_width" placeholder="Sepal Width (cm)" required="required" /><br>
+        <input type="text" name="petal_length" placeholder="Petal Length (cm)" required="required" /><br>
+        <input type="text" name="petal_width" placeholder="Petal Width (cm)" required="required" /><br>
+        <button type="submit">Predict</button>
+    </form>
+    <br>
+    <h2 class="prediction">{{ prediction_text }}</h2>
+    {% if prediction_text %}
+        <img src="{{ url_for('static', filename=image_filename) }}" alt="Iris Flower" class="iris-image">
+    {% endif %}
+</body>
+</html>
