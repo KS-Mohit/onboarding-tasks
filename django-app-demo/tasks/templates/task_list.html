@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Django To-Do App</title>
+    <style>
+        /* Notion-Inspired DARK THEME CSS */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #191919; /* Dark background */
+            color: #e2e2e2; /* Light gray text */
+            margin: 0;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            max-width: 680px;
+            width: 100%;
+            background: #2f2f2f; /* Slightly lighter container */
+            padding: 2rem 3rem;
+            border-radius: 8px;
+            border: 1px solid #444;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        h1, h2 {
+            font-weight: 600;
+            border-bottom: 1px solid #444;
+            padding-bottom: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+        .collapsible {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #ccc;
+        }
+        .collapsible-icon {
+            margin-right: 0.5rem;
+            transition: transform 0.2s ease-in-out;
+        }
+        .collapsible.open .collapsible-icon {
+            transform: rotate(90deg);
+        }
+        #task-list-container {
+            margin-top: 1rem;
+            max-height: 500px;
+            overflow-y: auto;
+            transition: opacity 0.3s ease;
+        }
+        #task-list-container.hidden {
+            display: none;
+        }
+        #task-list { list-style: none; padding: 0; }
+        .task-item { display: flex; align-items: center; padding: 10px 4px; border-bottom: 1px solid #444; }
+        .task-item.completed .title { text-decoration: line-through; color: #777; }
+        .task-item input[type="checkbox"] { margin-right: 15px; transform: scale(1.4); accent-color: #5a9ce2; }
+        .task-item .content { flex-grow: 1; }
+        .task-item .title { font-size: 1.1rem; font-weight: 500; }
+        .task-item .description { font-size: 0.9rem; color: #999; margin-top: 2px; }
+        .action-buttons { display: flex; align-items: center; }
+        .edit-btn, .delete-btn { background: none; border: none; cursor: pointer; opacity: 0.6; transition: opacity 0.2s ease; padding: 5px; }
+        .edit-btn:hover, .delete-btn:hover { opacity: 1; }
+        #new-task-form { margin-top: 2rem; }
+        #new-task-form input, #new-task-form textarea {
+            width: 100%; padding: 12px; border: 1px solid #444; border-radius: 4px; box-sizing: border-box; font-size: 1rem;
+            margin-bottom: 1rem; background-color: #2f2f2f; color: #e2e2e2;
+        }
+        .form-buttons { display: flex; gap: 10px; } /* NEW: Container for buttons */
+        #new-task-form button {
+            width: 100%; padding: 12px; border: none; background: #5a9ce2; color: white;
+            border-radius: 4px; font-size: 1rem; font-weight: bold; cursor: pointer; transition: background-color 0.2s ease;
+        }
+        #new-task-form button:hover { background: #4a8ad2; }
+        #cancel-edit-btn {
+            background-color: #555; /* NEW: Cancel button style */
+        }
+        #cancel-edit-btn:hover {
+             background-color: #444;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>My To-Do List</h1>
+        
+        <div id="tasks-container">
+            <h2 id="task-toggle" class="collapsible">
+                <span class="collapsible-icon">▶</span> Tasks
+            </h2>
+            <div id="task-list-container" class="hidden">
+                <ul id="task-list"></ul>
+            </div>
+        </div>
+        
+        <form id="new-task-form">
+            <h2 id="form-title">Add a new task</h2>
+            <input type="text" id="new-task-title" placeholder="Task title..." required>
+            <textarea id="new-task-description" placeholder="Description..." rows="3"></textarea>
+            <div class="form-buttons">
+                <button type="submit" id="submit-btn">Add Task</button>
+                <button type="button" id="cancel-edit-btn" style="display: none;">Cancel</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const API_URL = '/api/tasks/';
+        const taskList = document.getElementById('task-list');
+        const form = document.getElementById('new-task-form');
+        const titleInput = document.getElementById('new-task-title');
+        const descriptionInput = document.getElementById('new-task-description');
+        const formTitle = document.getElementById('form-title');
+        const submitBtn = document.getElementById('submit-btn');
+        const taskToggle = document.getElementById('task-toggle');
+        const taskListContainer = document.getElementById('task-list-container');
+        const cancelBtn = document.getElementById('cancel-edit-btn'); // NEW: Get the cancel button
+
+        // --- NEW: A reusable function to reset the form to its "Add Task" state ---
+        function resetForm() {
+            titleInput.value = '';
+            descriptionInput.value = '';
+            formTitle.innerText = 'Add a new task';
+            submitBtn.innerText = 'Add Task';
+            cancelBtn.style.display = 'none'; // Hide the cancel button
+            delete form.dataset.editingId;
+        }
+
+        async function fetchTasks() { /* ... (This function is unchanged) ... */
+            const response = await fetch(API_URL);
+            const tasks = await response.json();
+            taskList.innerHTML = '';
+            tasks.forEach(task => {
+                const li = document.createElement('li');
+                li.className = 'task-item';
+                if (task.completed) li.classList.add('completed');
+                li.dataset.id = task.id;
+                li.innerHTML = `
+                    <input type="checkbox" class="complete-checkbox" ${task.completed ? 'checked' : ''}>
+                    <div class="content">
+                        <div class="title">${task.title}</div>
+                        <div class="description">${task.description || ''}</div>
+                    </div>
+                    <div class="action-buttons">
+                        <button class="edit-btn" aria-label="Edit task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M11 4H4C3.46957 4 2.96086 4.21071 2.58579 4.58579C2.21071 4.96086 2 5.46957 2 6V20C2 20.5304 2.21071 21.0391 2.58579 21.4142C2.96086 21.7893 3.46957 22 4 22H18C18.5304 22 19.0391 21.7893 19.4142 21.4142C19.7893 21.0391 20 20.5304 20 20V13" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M18.5 2.5C18.8978 2.10218 19.4374 1.87868 20 1.87868C20.5626 1.87868 21.1022 2.10218 21.5 2.5C21.8978 2.89782 22.1213 3.43739 22.1213 4C22.1213 4.56261 21.8978 5.10218 21.5 5.5L12 15L8 16L9 12L18.5 2.5Z" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                        <button class="delete-btn" aria-label="Delete task"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M18 6L6 18M6 6L18 18" stroke="#ccc" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+                    </div>`;
+                taskList.appendChild(li);
+            });
+        }
+        
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const editingId = form.dataset.editingId;
+            const url = editingId ? `${API_URL}${editingId}/` : API_URL;
+            const method = editingId ? 'PUT' : 'POST';
+            const isCompleted = editingId ? document.querySelector(`.task-item[data-id='${editingId}'] .complete-checkbox`).checked : false;
+
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                body: JSON.stringify({ title: titleInput.value, description: descriptionInput.value, completed: isCompleted })
+            });
+
+            if (response.ok) {
+                resetForm(); // Use the reset function
+                fetchTasks();
+            }
+        });
+
+        taskList.addEventListener('click', async (e) => {
+            const taskItem = e.target.closest('.task-item');
+            if (!taskItem) return;
+            const taskId = taskItem.dataset.id;
+            const title = taskItem.querySelector('.title').innerText;
+            const description = taskItem.querySelector('.description').innerText;
+
+            if (e.target.closest('.delete-btn')) { /* ... (Unchanged) ... */
+                await fetch(`${API_URL}${taskId}/`, { method: 'DELETE', headers: {'X-CSRFToken': '{{ csrf_token }}'} });
+                fetchTasks();
+            }
+
+            if (e.target.classList.contains('complete-checkbox')) { /* ... (Unchanged) ... */
+                const isCompleted = e.target.checked;
+                await fetch(`${API_URL}${taskId}/`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: JSON.stringify({ title, description, completed: isCompleted })
+                });
+                fetchTasks();
+            }
+
+            if (e.target.closest('.edit-btn')) {
+                titleInput.value = title;
+                descriptionInput.value = description;
+                formTitle.innerText = `Editing Task #${taskId}`;
+                submitBtn.innerText = 'Update Task';
+                form.dataset.editingId = taskId;
+                cancelBtn.style.display = 'inline-block'; // Show the cancel button
+                titleInput.focus();
+            }
+        });
+        
+        // --- NEW: Event listener for the Cancel button ---
+        cancelBtn.addEventListener('click', () => {
+            resetForm(); // Reset the form when cancel is clicked
+        });
+        
+        taskToggle.addEventListener('click', () => { /* ... (Unchanged) ... */
+            taskToggle.classList.toggle('open');
+            taskListContainer.classList.toggle('hidden');
+        });
+
+        document.addEventListener('DOMContentLoaded', fetchTasks);
+    </script>
+</body>
+</html>
