@@ -1,9 +1,3 @@
-# Training Tasks
-
-This repository contains a collection of demo projects completed as part of the onboarding process for the Associate Data Scientist role. The goal of these projects is to demonstrate proficiency across a range of data tools, platforms, and frameworks used by the team.
-
----
-
 ## Projects Overview
 
 This repository is structured with a separate directory for each of the primary tasks. Each directory contains the necessary source code, sample data (if applicable), and its own detailed `README.md` explaining the project's setup and execution.
